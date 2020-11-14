@@ -43,6 +43,7 @@ class _InitialPageState extends State<InitialPage> {
           OutlinedButton(
             onPressed: () {
               //TODO: Add functionality
+              _signInBloc.add(SignInButtonPressedEvent());
             },
             child: Container(
               height: 50,

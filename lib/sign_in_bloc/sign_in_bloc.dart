@@ -1,16 +1,81 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 part 'sign_in_state.dart';
+
 part 'sign_in_events.dart';
 
-class SignInBloc extends Bloc<Events,States>{
+class SignInBloc extends Bloc<Events, States> {
   // ignore: non_constant_identifier_names
   SignInBloc() : super(InitialState());
 
   @override
-  Stream<States> mapEventToState(Events event) {
+  Stream<States> mapEventToState(Events event) async* {
     // TODO: implement mapEventToState
-    throw UnimplementedError();
+    if (event is SignInButtonPressedEvent) {
+      yield LoadingState();
+      await signInWithGoogle();
+           yield SignInState();
+    }
+    else if (event is SignOutButtonPressedEvent){
+      yield LoadingState();
+      await signOutGoogle();
+      yield InitialState();
+    }
+  }
+}
+
+final FirebaseAuth _auth = FirebaseAuth.instance;
+final GoogleSignIn googleSignIn = GoogleSignIn();
+String name;
+String email;
+String imageUrl;
+
+Future<String> signInWithGoogle() async {
+  await Firebase.initializeApp();
+
+  final GoogleSignInAccount googleSignInAccount = await googleSignIn.signIn();
+  final GoogleSignInAuthentication googleSignInAuthentication =
+      await googleSignInAccount.authentication;
+
+  final AuthCredential credential = GoogleAuthProvider.credential(
+    accessToken: googleSignInAuthentication.accessToken,
+    idToken: googleSignInAuthentication.idToken,
+  );
+
+  final UserCredential authResult =
+      await _auth.signInWithCredential(credential);
+  final User user = authResult.user;
+  if (user != null) {
+    assert(user.email != null);
+    assert(user.displayName != null);
+    assert(user.photoURL != null);
+    assert(!user.isAnonymous);
+    assert(await user.getIdToken() != null);
+
+    name = user.displayName;
+    email = user.email;
+    imageUrl = user.photoURL;
+
+    if (name.contains(" ")) {
+      name = name.substring(0, name.indexOf(" "));
+    }
+
+    final User currentUser = _auth.currentUser;
+    assert(user.uid == currentUser.uid);
+
+    print('signInWithGoogle succeeded: $user');
+
+    return '$user';
   }
 
+  return null;
+}
+
+Future<void> signOutGoogle() async {
+  await googleSignIn.signOut();
+  print("User Signed Out");
 }
